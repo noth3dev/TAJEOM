@@ -154,22 +154,22 @@ export default function TeacherDashboard({ userName }: TeacherDashboardProps) {
         <div className="space-y-8">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-gray-900">안녕하세요, {userName} 선생님!</h1>
-                <p className="text-gray-500 mt-1">오늘의 학원 현황을 확인하세요</p>
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900">안녕하세요, {userName} 선생님!</h1>
+                <p className="text-sm md:text-base text-gray-500 mt-1">오늘의 학원 현황을 확인하세요</p>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {stats.map((stat, idx) => (
                     <div
                         key={idx}
-                        className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+                        className="bg-white rounded-[24px] p-6 shadow-sm border border-gray-100"
                     >
-                        <p className="text-sm text-gray-500">{stat.label}</p>
-                        <div className="flex items-end gap-2 mt-2">
-                            <span className="text-3xl font-bold text-gray-900">{stat.value}</span>
+                        <p className="text-[11px] md:text-sm text-gray-400 font-bold uppercase tracking-wider">{stat.label}</p>
+                        <div className="flex items-baseline gap-2 mt-2">
+                            <span className="text-2xl md:text-3xl font-black text-gray-900">{stat.value}</span>
                             {stat.change && (
-                                <span className={`text-sm font-medium ${stat.positive ? 'text-orange-500' : 'text-gray-400'}`}>
+                                <span className={`text-[10px] md:text-sm font-bold ${stat.positive ? 'text-orange-500' : 'text-gray-400'}`}>
                                     {stat.change}
                                 </span>
                             )}
@@ -251,62 +251,61 @@ export default function TeacherDashboard({ userName }: TeacherDashboardProps) {
                     </Link>
 
                     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4">빠른 실행</h2>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
                             <button
                                 onClick={() => router.push('/classes')}
-                                className="p-4 bg-gray-50 rounded-xl text-left hover:bg-orange-50 transition-colors group"
+                                className="p-4 bg-gray-50 rounded-2xl text-left hover:bg-orange-50 transition-all group border border-transparent hover:border-orange-100"
                             >
-                                <div className="w-10 h-10 bg-gray-900 group-hover:bg-orange-500 rounded-lg flex items-center justify-center mb-3 transition-colors">
+                                <div className="w-10 h-10 bg-gray-900 group-hover:bg-orange-500 rounded-xl flex items-center justify-center mb-3 transition-colors shadow-lg shadow-gray-200">
                                     <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                     </svg>
                                 </div>
-                                <p className="font-medium text-gray-900">새 수업 만들기</p>
+                                <p className="text-[13px] md:text-sm font-bold text-gray-900">새 수업 만들기</p>
                             </button>
                             <button
                                 onClick={() => router.push('/assignments')}
-                                className="p-4 bg-gray-50 rounded-xl text-left hover:bg-orange-50 transition-colors group"
+                                className="p-4 bg-gray-50 rounded-2xl text-left hover:bg-orange-50 transition-all group border border-transparent hover:border-orange-100"
                             >
-                                <div className="w-10 h-10 bg-gray-900 group-hover:bg-orange-500 rounded-lg flex items-center justify-center mb-3 transition-colors">
+                                <div className="w-10 h-10 bg-gray-900 group-hover:bg-orange-500 rounded-xl flex items-center justify-center mb-3 transition-colors shadow-lg shadow-gray-200">
                                     <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                 </div>
-                                <p className="font-medium text-gray-900">과제 출제</p>
+                                <p className="text-[13px] md:text-sm font-bold text-gray-900">과제 출제</p>
                             </button>
                             <button
                                 onClick={() => router.push('/attendance')}
-                                className="p-4 bg-gray-50 rounded-xl text-left hover:bg-orange-50 transition-colors group"
+                                className="p-4 bg-gray-50 rounded-2xl text-left hover:bg-orange-50 transition-all group border border-transparent hover:border-orange-100"
                             >
-                                <div className="w-10 h-10 bg-gray-900 group-hover:bg-orange-500 rounded-lg flex items-center justify-center mb-3 transition-colors">
+                                <div className="w-10 h-10 bg-gray-900 group-hover:bg-orange-500 rounded-xl flex items-center justify-center mb-3 transition-colors shadow-lg shadow-gray-200">
                                     <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
-                                <p className="font-medium text-gray-900">출석 체크</p>
+                                <p className="text-[13px] md:text-sm font-bold text-gray-900">출석 체크</p>
                             </button>
                             <button
                                 onClick={() => setShowWifiModal(true)}
-                                className="p-4 bg-gray-50 rounded-xl text-left hover:bg-orange-50 transition-colors group"
+                                className="p-4 bg-gray-50 rounded-2xl text-left hover:bg-orange-50 transition-all group border border-transparent hover:border-orange-100"
                             >
-                                <div className="w-10 h-10 bg-gray-900 group-hover:bg-orange-500 rounded-lg flex items-center justify-center mb-3 transition-colors">
+                                <div className="w-10 h-10 bg-gray-900 group-hover:bg-orange-500 rounded-xl flex items-center justify-center mb-3 transition-colors shadow-lg shadow-gray-200">
                                     <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.141c5.857-5.858 15.355-5.858 21.212 0" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.141c5.857-5.858 15.355-5.858 21.212 0" />
                                     </svg>
                                 </div>
-                                <p className="font-medium text-gray-900">와이파이 설정</p>
+                                <p className="text-[13px] md:text-sm font-bold text-gray-900">와이파이 설정</p>
                             </button>
                             <button
                                 onClick={() => router.push('/assignments')}
-                                className="p-4 bg-gray-50 rounded-xl text-left hover:bg-orange-50 transition-colors group"
+                                className="p-4 bg-gray-50 rounded-2xl text-left hover:bg-orange-50 transition-all group border border-transparent hover:border-orange-100"
                             >
-                                <div className="w-10 h-10 bg-gray-900 group-hover:bg-orange-500 rounded-lg flex items-center justify-center mb-3 transition-colors">
+                                <div className="w-10 h-10 bg-gray-900 group-hover:bg-orange-500 rounded-xl flex items-center justify-center mb-3 transition-colors shadow-lg shadow-gray-200">
                                     <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                     </svg>
                                 </div>
-                                <p className="font-medium text-gray-900">PDF 업로드</p>
+                                <p className="text-[13px] md:text-sm font-bold text-gray-900">PDF 업로드</p>
                             </button>
                         </div>
                     </div>
@@ -314,55 +313,57 @@ export default function TeacherDashboard({ userName }: TeacherDashboardProps) {
             </div>
 
             {/* Wifi Settings Modal */}
-            {showWifiModal && (
-                <div className="fixed inset-0 z-[101] flex items-center justify-center p-6 sm:p-0">
-                    <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setShowWifiModal(false)} />
-                    <div className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative animate-scale-in">
-                        <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-xl font-black text-gray-900">학원 와이파이 설정</h2>
-                            <button onClick={() => setShowWifiModal(false)} className="text-gray-400 hover:text-gray-600">
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <div className="space-y-6">
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block px-1">WIFI 이름 (SSID)</label>
-                                <input
-                                    type="text"
-                                    value={wifiSsid}
-                                    onChange={(e) => setWifiSsid(e.target.value)}
-                                    placeholder="예: TAJEOM_FREE_WIFI"
-                                    className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-gray-900 font-bold focus:outline-none focus:bg-white focus:ring-2 focus:ring-orange-500/20 transition-all"
-                                />
-                            </div>
-
-                            <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100">
-                                <p className="text-[11px] text-orange-600 font-bold mb-2 flex items-center gap-1">
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            {
+                showWifiModal && (
+                    <div className="fixed inset-0 z-[101] flex items-center justify-center p-6 sm:p-0">
+                        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setShowWifiModal(false)} />
+                        <div className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative animate-scale-in">
+                            <div className="flex items-center justify-between mb-8">
+                                <h2 className="text-xl font-black text-gray-900">학원 와이파이 설정</h2>
+                                <button onClick={() => setShowWifiModal(false)} className="text-gray-400 hover:text-gray-600">
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                                     </svg>
-                                    현재 네트워크 정보
-                                </p>
-                                <div className="space-y-1">
-                                    <p className="text-xs text-gray-500">현재 이 기기가 접속 중인 IP를 학원 와이파이 주소로 등록합니다.</p>
-                                    <p className="text-sm font-black text-gray-900">{currentIp || 'IP 감지 중...'}</p>
-                                </div>
+                                </button>
                             </div>
 
-                            <button
-                                onClick={handleSetWifi}
-                                disabled={wifiLoading}
-                                className="w-full py-4.5 bg-orange-500 text-white font-black rounded-2xl shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50"
-                            >
-                                {wifiLoading ? '설정 중...' : '현재 네트워크로 설정하기'}
-                            </button>
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block px-1">WIFI 이름 (SSID)</label>
+                                    <input
+                                        type="text"
+                                        value={wifiSsid}
+                                        onChange={(e) => setWifiSsid(e.target.value)}
+                                        placeholder="예: TAJEOM_FREE_WIFI"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-gray-900 font-bold focus:outline-none focus:bg-white focus:ring-2 focus:ring-orange-500/20 transition-all"
+                                    />
+                                </div>
+
+                                <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100">
+                                    <p className="text-[11px] text-orange-600 font-bold mb-2 flex items-center gap-1">
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        현재 네트워크 정보
+                                    </p>
+                                    <div className="space-y-1">
+                                        <p className="text-xs text-gray-500">현재 이 기기가 접속 중인 IP를 학원 와이파이 주소로 등록합니다.</p>
+                                        <p className="text-sm font-black text-gray-900">{currentIp || 'IP 감지 중...'}</p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleSetWifi}
+                                    disabled={wifiLoading}
+                                    className="w-full py-4.5 bg-orange-500 text-white font-black rounded-2xl shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50"
+                                >
+                                    {wifiLoading ? '설정 중...' : '현재 네트워크로 설정하기'}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
