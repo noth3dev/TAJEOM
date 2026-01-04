@@ -12,6 +12,7 @@ interface StudentGrade {
     notes: string;
     exam_date: string;
     created_at: string;
+    class_id?: string;
     users?: {
         name: string;
         school_name: string;
@@ -193,7 +194,7 @@ export default function ReportsPage() {
             if (!acc[key]) {
                 acc[key] = {
                     id: key,
-                    classId: grade.class_id,
+                    classId: grade.class_id || '',
                     className: grade.classes?.name || '기타 수업',
                     testName: grade.notes || '정기 고사',
                     examDate: grade.exam_date,

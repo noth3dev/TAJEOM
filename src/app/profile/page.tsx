@@ -166,7 +166,7 @@ export default function ProfilePage() {
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Header userName={user?.name || ''} />
+            <Header />
 
             <main className="flex-1 flex flex-col items-center justify-center p-6 animate-fade-in">
                 <div className="w-full max-w-md bg-white rounded-[32px] p-8 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-gray-100 text-center">

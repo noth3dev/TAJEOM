@@ -7,6 +7,7 @@ interface RegistrationData {
     role: 'student' | 'parent';
     name: string;
     phoneNumber: string;
+    password: string;
     school: SchoolInfo | null;
     grade: number | null;
     birthYear: number | null;
@@ -22,6 +23,7 @@ const initialData: RegistrationData = {
     role: 'student',
     name: '',
     phoneNumber: '',
+    password: '',
     school: null,
     grade: null,
     birthYear: null,
