@@ -38,10 +38,6 @@ export default function LoginPage() {
                 <p className="text-gray-500">국어의 결정적 한 타</p>
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">
-                로그인
-            </h2>
-
             {/* Google Login Button */}
             <button
                 onClick={handleGoogleLogin}

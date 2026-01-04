@@ -16,19 +16,23 @@ export default function SignupLayout({ children }: SignupLayoutProps) {
     useEffect(() => {
         async function checkSession() {
             const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                // 이미 세션이 있으면 프로필이 있는지 확인
-                const { data: profile } = await supabase
-                    .from('users')
-                    .select('id')
-                    .eq('id', session.user.id)
-                    .maybeSingle();
+            if (!session) {
+                // 세션이 없으면 로그인으로
+                router.replace('/login');
+                return;
+            }
 
-                if (profile) {
-                    // 프로필까지 있으면 홈으로
-                    router.replace('/');
-                    return;
-                }
+            // 이미 세션이 있으면 프로필이 있는지 확인
+            const { data: profile } = await supabase
+                .from('users')
+                .select('id')
+                .eq('id', session.user.id)
+                .maybeSingle();
+
+            if (profile) {
+                // 프로필까지 있으면 홈으로
+                router.replace('/');
+                return;
             }
             setLoading(false);
         }

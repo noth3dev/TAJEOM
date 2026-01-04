@@ -269,6 +269,27 @@ export default function ClassesPage() {
     };
 
     // --- Core Logic: Drag Move & Resize ---
+    const isOverlapping = (classId: string | null, dayOfWeek: number, startTime: string, endTime: string, currentClasses: ClassItem[]) => {
+        const toMinutes = (time: string) => {
+            const [h, m] = time.split(':').map(Number);
+            const adjustedH = h < 8 ? h + 24 : h;
+            return adjustedH * 60 + (m || 0);
+        };
+
+        const newStart = toMinutes(startTime);
+        const newEnd = toMinutes(endTime);
+
+        return currentClasses.some(cls => {
+            if (cls.id === classId) return false;
+            if (cls.day_of_week !== dayOfWeek) return false;
+
+            const start = toMinutes(cls.start_time);
+            const end = toMinutes(cls.end_time);
+
+            return Math.max(newStart, start) < Math.min(newEnd, end);
+        });
+    };
+
     const handleClassDrop = async (classId: string, dayOfWeek: number, hour: number) => {
         const cls = classes.find(c => c.id === classId);
         if (!cls) return;
@@ -280,6 +301,11 @@ export default function ClassesPage() {
         const newEndH = (Math.floor(endHourTotal / 60)) % 24;
         const newEndM = endHourTotal % 60;
         const newEnd = `${newEndH.toString().padStart(2, '0')}:${newEndM.toString().padStart(2, '0')}:00`;
+
+        if (isOverlapping(classId, dayOfWeek, newStart, newEnd, classes)) {
+            alert('해당 시간에 이미 다른 수업이 있습니다.');
+            return;
+        }
 
         const { error } = await supabase.from('classes').update({ day_of_week: dayOfWeek, start_time: newStart, end_time: newEnd }).eq('id', classId);
         if (error) alert('이동 실패: ' + error.message);
@@ -304,6 +330,11 @@ export default function ClassesPage() {
 
             const finalEndH = targetHour % 24;
             const newEndTime = `${finalEndH.toString().padStart(2, '0')}:00:00`;
+
+            if (isOverlapping(classId, cls.day_of_week, cls.start_time, newEndTime, classes)) {
+                alert('해당 시간에 이미 다른 수업이 있습니다.');
+                return;
+            }
 
             const { error } = await supabase.from('classes').update({ end_time: newEndTime }).eq('id', classId);
             if (error) alert('시간 변경 실패: ' + error.message);
@@ -349,13 +380,25 @@ export default function ClassesPage() {
 
     const handleAddClass = async () => {
         if (!newClass.name) return;
-        const { data, error } = await supabase.from('classes').insert({ ...newClass, subject: '기타', teacher_id: userId, start_time: `${newClass.start_time}:00`, end_time: `${newClass.end_time}:00` }).select().single();
+        const startTime = `${newClass.start_time}:00`;
+        const endTime = `${newClass.end_time}:00`;
+
+        if (isOverlapping(null, newClass.day_of_week, startTime, endTime, classes)) {
+            alert('해당 시간에 이미 다른 수업이 있습니다.');
+            return;
+        }
+
+        const { data, error } = await supabase.from('classes').insert({ ...newClass, subject: '기타', teacher_id: userId, start_time: startTime, end_time: endTime }).select().single();
         if (error) return alert('생성 실패: ' + error.message);
         if (data && selectedStudentsForNewClass.length > 0) await supabase.from('class_students').insert(selectedStudentsForNewClass.map(sid => ({ class_id: data.id, student_id: sid })));
         setShowAddModal(false); fetchData(); setSelectedStudentsForNewClass([]);
     };
 
     const handleDuplicateClass = async (cls: ClassItem) => {
+        if (isOverlapping(null, cls.day_of_week, cls.start_time, cls.end_time, classes)) {
+            alert('복제하려는 시간에 이미 다른 수업이 있습니다.');
+            return;
+        }
         const { error } = await supabase.from('classes').insert({ ...cls, id: undefined, name: `${cls.name} (복사)`, teacher_id: userId, created_at: undefined, updated_at: undefined });
         if (error) alert('복제 실패: ' + error.message); else fetchData();
     };
