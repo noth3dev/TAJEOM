@@ -1,0 +1,10 @@
+<svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="25" cy="25" r="25" fill="white"/>
+<path d="M25 35C30.5228 35 35 30.5228 35 25C35 19.4772 30.5228 15 25 15C19.4772 15 15 19.4772 15 25C15 30.5228 19.4772 35 25 35Z" fill="white"/>
+<path d="M25 31C28.3137 31 31 28.3137 31 25C31 21.6863 28.3137 19 25 19C21.6863 19 19 21.6863 19 25C19 28.3137 21.6863 31 25 31Z" fill="white"/>
+<path d="M25 27C26.1046 27 27 26.1046 27 25C27 23.8954 26.1046 23 25 23C23.8954 23 23 23.8954 23 25C23 26.1046 23.8954 27 25 27Z" fill="white"/>
+<path d="M25 35C30.5228 35 35 30.5228 35 25C35 19.4772 30.5228 15 25 15C19.4772 15 15 19.4772 15 25C15 30.5228 19.4772 35 25 35Z" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M25 31C28.3137 31 31 28.3137 31 25C31 21.6863 28.3137 19 25 19C21.6863 19 19 21.6863 19 25C19 28.3137 21.6863 31 25 31Z" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M25 27C26.1046 27 27 26.1046 27 25C27 23.8954 26.1046 23 25 23C23.8954 23 23 23.8954 23 25C23 26.1046 23.8954 27 25 27Z" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="24.8105" y="25.458" width="1.0113" height="22.5774" transform="rotate(-115 24.8105 25.458)" fill="white"/>
+</svg>
