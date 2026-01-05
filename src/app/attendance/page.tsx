@@ -166,8 +166,8 @@ export default function AttendancePage() {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">출석 관리</h1>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">출석 관리</h1>
+                        <p className="text-xs md:text-sm text-gray-400 mt-1 font-medium">
                             {userRole === 'teacher' ? '일자별 전체 출석 현황을 관리하세요' :
                                 userRole === 'parent' ? '자녀의 출결 기록을 확인하세요' :
                                     '나의 출결 기록을 확인하세요'}
@@ -177,7 +177,7 @@ export default function AttendancePage() {
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setShowWifiModal(true)}
-                                className="px-4 py-2 bg-orange-50 text-orange-600 border border-orange-100 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-orange-100 transition-all active:scale-95"
+                                className="px-5 py-2.5 bg-primary/10 text-primary rounded-2xl text-xs font-black flex items-center gap-2 hover:bg-primary/20 transition-all active:scale-95"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0O1.394 9.141c5.857-5.858 15.355-5.858 21.212 0" />
@@ -188,7 +188,7 @@ export default function AttendancePage() {
                                 type="date"
                                 value={selectedDate}
                                 onChange={(e) => setSelectedDate(e.target.value)}
-                                className="px-4 py-2 border border-gray-100 rounded-xl bg-white focus:ring-2 focus:ring-orange-500 outline-none text-sm font-medium shadow-sm transition-all"
+                                className="px-5 py-2.5 border border-gray-100 rounded-2xl bg-white focus:ring-2 focus:ring-primary/20 outline-none text-xs font-black shadow-sm transition-all cursor-pointer"
                             />
                         </div>
                     )}
@@ -197,49 +197,49 @@ export default function AttendancePage() {
                             type="date"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
-                            className="px-4 py-2 border border-gray-100 rounded-xl bg-white focus:ring-2 focus:ring-orange-500 outline-none text-sm font-medium shadow-sm transition-all"
+                            className="px-5 py-2.5 border border-gray-100 rounded-2xl bg-white focus:ring-2 focus:ring-primary/20 outline-none text-xs font-black shadow-sm transition-all cursor-pointer"
                         />
                     )}
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-50">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">전체</p>
-                        <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                    <div className="glass-panel rounded-[32px] p-5 md:p-6 shadow-glow border-0 flex flex-col items-center text-center">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">전체</p>
+                        <p className="text-2xl font-black text-gray-900">{stats.total}</p>
                     </div>
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-50">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider text-green-500">출석</p>
-                        <p className="text-2xl font-bold text-green-600 mt-1">{stats.present}</p>
+                    <div className="glass-panel rounded-[32px] p-5 md:p-6 shadow-glow border-0 flex flex-col items-center text-center">
+                        <p className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-1">출석</p>
+                        <p className="text-2xl font-black text-green-600">{stats.present}</p>
                     </div>
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-50">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider text-orange-400">지각</p>
-                        <p className="text-2xl font-bold text-orange-500 mt-1">{stats.late}</p>
+                    <div className="glass-panel rounded-[32px] p-5 md:p-6 shadow-glow border-0 flex flex-col items-center text-center">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">지각</p>
+                        <p className="text-2xl font-black text-primary">{stats.late}</p>
                     </div>
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-50">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider text-red-400">결석</p>
-                        <p className="text-2xl font-bold text-red-500 mt-1">{stats.absent}</p>
+                    <div className="glass-panel rounded-[32px] p-5 md:p-6 shadow-glow border-0 flex flex-col items-center text-center">
+                        <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">결석</p>
+                        <p className="text-2xl font-black text-red-600">{stats.absent}</p>
                     </div>
                 </div>
 
                 {/* Attendance List */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-50 overflow-hidden">
+                <div className="glass-panel rounded-[40px] shadow-glow border-0 overflow-hidden">
                     {loading ? (
                         <div className="py-20 flex justify-center">
-                            <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                         </div>
                     ) : attendance.length > 0 ? (
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[600px]">
-                                <thead className="bg-gray-50/50">
+                                <thead className="bg-gray-50/10">
                                     <tr>
                                         {userRole !== 'student' && (
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">학생</th>
+                                            <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">학생</th>
                                         )}
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">날짜</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">등원</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">하원</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">상태</th>
+                                        <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">날짜</th>
+                                        <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">등원</th>
+                                        <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">하원</th>
+                                        <th className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">상태</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -258,9 +258,9 @@ export default function AttendancePage() {
                                                     <select
                                                         value={record.status}
                                                         onChange={(e) => handleUpdateStatus(record.id, e.target.value as any)}
-                                                        className={`px-3 py-1 rounded-full font-bold text-xs border-none cursor-pointer focus:ring-2 focus:ring-orange-500/20 outline-none transition-all ${record.status === 'present' ? 'bg-green-50 text-green-600' :
-                                                            record.status === 'late' ? 'bg-orange-50 text-orange-600' :
-                                                                record.status === 'absent' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'
+                                                        className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-wider border-none cursor-pointer focus:ring-2 focus:ring-primary/20 outline-none transition-all ${record.status === 'present' ? 'bg-green-500/10 text-green-600' :
+                                                            record.status === 'late' ? 'bg-primary/10 text-primary' :
+                                                                record.status === 'absent' ? 'bg-red-500/10 text-red-600' : 'bg-gray-100 text-gray-600'
                                                             }`}
                                                     >
                                                         <option value="present">출석</option>

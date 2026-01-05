@@ -182,8 +182,8 @@ export default function ReportsPage() {
     };
 
     const getScoreColor = (score: number) => {
-        if (score >= 90) return 'text-orange-600';
-        if (score >= 80) return 'text-orange-400';
+        if (score >= 90) return 'text-primary';
+        if (score >= 80) return 'text-primary/70';
         if (score >= 70) return 'text-gray-900';
         return 'text-gray-400';
     };
@@ -220,13 +220,13 @@ export default function ReportsPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">성적표 리포트</h1>
-                        <p className="text-sm text-gray-500 mt-1">정기 테스트 및 과제 평가 결과입니다</p>
+                        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">성적표 리포트</h1>
+                        <p className="text-xs md:text-sm text-gray-400 mt-1 font-medium">정기 테스트 및 과제 평가 결과입니다</p>
                     </div>
                     {(userRole === 'teacher' || userRole === 'admin') && (
                         <button
                             onClick={() => setShowInput(!showInput)}
-                            className="px-5 py-2.5 bg-gray-900 text-white rounded-2xl text-xs font-bold shadow-lg flex items-center gap-2"
+                            className="px-6 py-2.5 bg-gray-900 text-white rounded-2xl text-xs font-black shadow-xl flex items-center gap-2 hover:bg-black transition-all active:scale-95"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -237,7 +237,7 @@ export default function ReportsPage() {
                 </div>
 
                 {showInput && (
-                    <div className="bg-white rounded-[40px] p-8 md:p-10 border border-orange-100 shadow-xl shadow-orange-500/5 animate-fade-in">
+                    <div className="glass-panel border-0 rounded-[40px] p-8 md:p-10 shadow-glow animate-fade-in mb-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                             <div>
                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block px-1">수업 선택</label>
@@ -266,14 +266,14 @@ export default function ReportsPage() {
                                     type="date"
                                     value={testDate}
                                     onChange={(e) => setTestDate(e.target.value)}
-                                    className="w-full px-5 py-3.5 bg-gray-50 rounded-2xl font-bold text-sm border-transparent focus:bg-white focus:border-gray-100 outline-none transition-all"
+                                    className="w-full px-5 py-3.5 bg-gray-50 border border-transparent focus:bg-white focus:border-gray-100 rounded-2xl font-black text-xs outline-none transition-all cursor-pointer"
                                 />
                             </div>
                             <div className="flex items-end">
                                 <button
                                     onClick={handleSave}
                                     disabled={saving || !selectedClass}
-                                    className="w-full py-3.5 bg-orange-500 text-white font-black rounded-2xl shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50 text-sm"
+                                    className="w-full py-4 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-hover transition-all active:scale-95 disabled:opacity-50 text-xs uppercase tracking-widest"
                                 >
                                     {saving ? '저장 중...' : '일괄 저장하기'}
                                 </button>
@@ -289,14 +289,14 @@ export default function ReportsPage() {
                                 </div>
                                 <div className="space-y-3">
                                     {students.map((s, idx) => (
-                                        <div key={s.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center p-4 md:p-6 bg-gray-50/50 rounded-3xl border border-gray-100 hover:border-orange-200 transition-colors group">
+                                        <div key={s.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center p-4 md:p-6 glass-panel rounded-3xl border-0 hover:border-primary/30 transition-all group hover:shadow-glow">
                                             <div className="md:col-span-4 flex items-center gap-4">
-                                                <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center font-bold text-gray-400 border border-gray-100 group-hover:text-orange-500 transition-colors">
+                                                <div className="w-10 h-10 bg-white/50 rounded-2xl flex items-center justify-center font-black text-gray-400 border border-gray-100 group-hover:text-primary transition-colors">
                                                     {idx + 1}
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-gray-900">{s.name}</span>
-                                                    <span className="text-[10px] text-gray-400 font-medium">{s.school}</span>
+                                                    <span className="font-black text-gray-900 tracking-tight">{s.name}</span>
+                                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{s.school}</span>
                                                 </div>
                                             </div>
                                             <div className="md:col-span-4">
@@ -310,8 +310,8 @@ export default function ReportsPage() {
                                                         setStudents(newList);
                                                     }}
                                                     placeholder={!s.notTaken ? "점수 입력" : "-"}
-                                                    className={`w-full px-4 py-2.5 rounded-xl font-bold text-center outline-none transition-all ${!s.notTaken
-                                                        ? "bg-white border border-gray-100 focus:ring-2 focus:ring-orange-500/20"
+                                                    className={`w-full px-4 py-2.5 rounded-xl font-black text-center outline-none transition-all ${!s.notTaken
+                                                        ? "bg-white border border-gray-100 focus:ring-2 focus:ring-primary/20"
                                                         : "bg-gray-100 border-transparent text-gray-400 cursor-not-allowed"
                                                         }`}
                                                 />
@@ -333,8 +333,8 @@ export default function ReportsPage() {
                                                                 setStudents(newList);
                                                             }}
                                                         />
-                                                        <div className="w-12 h-6 bg-gray-100 rounded-full peer-checked:bg-red-50 transition-all border border-gray-100 peer-checked:border-red-100"></div>
-                                                        <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-6 peer-checked:bg-red-500 shadow-sm border border-gray-100 peer-checked:border-transparent"></div>
+                                                        <div className="w-12 h-6 bg-gray-100 rounded-full peer-checked:bg-primary/10 transition-all border border-gray-100 peer-checked:border-primary/20"></div>
+                                                        <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-6 peer-checked:bg-primary shadow-sm border border-gray-100 peer-checked:border-transparent"></div>
                                                     </div>
                                                 </label>
                                             </div>
@@ -352,7 +352,7 @@ export default function ReportsPage() {
 
                 {loading ? (
                     <div className="py-20 flex justify-center">
-                        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : grades.length > 0 ? (
                     userRole === 'teacher' || userRole === 'admin' ? (
@@ -363,20 +363,20 @@ export default function ReportsPage() {
                                 const avgScore = Math.round(evaluation.students.reduce((acc, s) => acc + s.score, 0) / evaluation.students.length);
 
                                 return (
-                                    <div key={evaluation.id} className="bg-white rounded-[32px] overflow-hidden border border-gray-100 shadow-sm transition-all hover:border-orange-100">
+                                    <div key={evaluation.id} className="glass-panel rounded-[32px] overflow-hidden border-0 shadow-glow transition-all hover:border-primary/30 mb-4">
                                         <div
                                             onClick={() => toggleEvaluation(evaluation.id)}
                                             className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-gray-50/50 transition-colors"
                                         >
                                             <div className="flex items-center gap-5">
-                                                <div className="w-12 h-12 bg-gray-900 rounded-2xl flex items-center justify-center text-white shrink-0">
+                                                <div className="w-12 h-12 bg-gray-900 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-xl">
                                                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                                     </svg>
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">{evaluation.className}</span>
+                                                        <span className="text-[10px] font-black text-primary uppercase tracking-widest">{evaluation.className}</span>
                                                         <span className="w-1 h-1 bg-gray-200 rounded-full" />
                                                         <span className="text-[10px] font-bold text-gray-400">{evaluation.examDate}</span>
                                                     </div>
@@ -391,7 +391,7 @@ export default function ReportsPage() {
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">평균 점수</p>
-                                                    <p className="text-lg font-black text-orange-500">{avgScore}<span className="text-xs ml-0.5">/100</span></p>
+                                                    <p className="text-lg font-black text-primary">{avgScore}<span className="text-xs ml-0.5">/100</span></p>
                                                 </div>
                                                 <div className={`w-10 h-10 rounded-2xl flex items-center justify-center bg-gray-50 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
                                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -443,9 +443,9 @@ export default function ReportsPage() {
                                 <div className="col-span-3 text-right">취득 점수</div>
                             </div>
                             {grades.map((grade) => (
-                                <div key={grade.id} className="bg-white rounded-3xl p-6 md:px-8 md:py-6 border border-gray-100 shadow-sm hover:border-orange-100 hover:shadow-md transition-all group flex flex-col md:grid md:grid-cols-12 gap-4 items-center">
+                                <div key={grade.id} className="glass-panel rounded-3xl p-6 md:px-8 md:py-6 border-0 shadow-sm hover:border-primary/30 hover:shadow-glow transition-all group flex flex-col md:grid md:grid-cols-12 gap-4 items-center mb-3">
                                     <div className="md:col-span-2 flex items-center gap-3 w-full">
-                                        <div className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 group-hover:text-orange-500 transition-colors shrink-0">
+                                        <div className="w-10 h-10 bg-white/50 rounded-2xl flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors shrink-0 border border-gray-50 shadow-sm">
                                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                             </svg>
@@ -457,7 +457,7 @@ export default function ReportsPage() {
                                     </div>
 
                                     <div className="md:col-span-2 flex flex-col w-full">
-                                        <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-0.5">{grade.subject}</span>
+                                        <span className="text-[10px] font-black text-primary uppercase tracking-widest mb-0.5">{grade.subject}</span>
                                         <span className="text-sm font-black text-gray-900">
                                             {userRole === 'parent' ? grade.users?.name : '내 성적'}
                                         </span>
@@ -481,7 +481,7 @@ export default function ReportsPage() {
                         </div>
                     )
                 ) : (
-                    <div className="py-20 text-center bg-white rounded-[40px] border border-gray-50">
+                    <div className="py-20 text-center glass-panel rounded-[40px] border-0">
                         <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-200">
                             <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                         </div>

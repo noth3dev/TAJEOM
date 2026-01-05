@@ -14,6 +14,7 @@ interface ClassItem {
     teacher_id: string;
     teacher?: { name: string };
     student_count?: number;
+    enrolled_students?: { id: string, name: string }[];
 }
 
 interface Student {
@@ -31,8 +32,8 @@ interface ClassPreset {
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
-const HOURS = Array.from({ length: 20 }, (_, i) => (i + 8) % 24);
-const HOUR_HEIGHT = 48;
+const HOURS = Array.from({ length: 16 }, (_, i) => (i + 8) % 24); // 8:00 to 23:00
+const DEFAULT_HOUR_HEIGHT = 42;
 
 const COLORS = [
     { name: 'orange', bg: 'bg-orange-500', hex: '#f97316', label: '오렌지' },
@@ -66,7 +67,13 @@ export default function ClassesPage() {
     const [isSavingPreset, setIsSavingPreset] = useState(false);
 
     const [isDragging, setIsDragging] = useState(false);
+    const [draggedClassId, setDraggedClassId] = useState<string | null>(null);
+    const [dragOverPos, setDragOverPos] = useState<{ dayIdx: number, hour: number } | null>(null);
     const [resizingId, setResizingId] = useState<string | null>(null);
+    const [resizePreviewEndHour, setResizePreviewEndHour] = useState<number | null>(null);
+    const [isDraggingStudent, setIsDraggingStudent] = useState(false);
+    const lastTargetHourRef = useRef<number | null>(null);
+    const isActuallyResizing = useRef(false);
     const timetableRef = useRef<HTMLDivElement>(null);
 
     const [nextClass, setNextClass] = useState<ClassItem | null>(null);
@@ -121,8 +128,15 @@ export default function ClassesPage() {
             const { data: classesData } = await supabase.from('classes').select('*, teacher:users!classes_teacher_id_fkey(name)');
             if (classesData) {
                 const withCounts = await Promise.all(classesData.map(async (cls) => {
-                    const { count } = await supabase.from('class_students').select('*', { count: 'exact', head: true }).eq('class_id', cls.id);
-                    return { ...cls, student_count: count || 0 };
+                    const { data: studentData } = await supabase.from('class_students').select('student_id, users!class_students_student_id_fkey(name)').eq('class_id', cls.id);
+                    return {
+                        ...cls,
+                        student_count: studentData?.length || 0,
+                        enrolled_students: studentData?.map(d => ({
+                            id: d.student_id,
+                            name: (d as any).users.name
+                        })).filter(Boolean) || []
+                    };
                 }));
 
                 if (role === 'student') {
@@ -163,7 +177,7 @@ export default function ClassesPage() {
 
     useEffect(() => {
         fetchData();
-        const handleResize = () => setDynamicHourHeight(window.innerWidth < 768 ? 40 : 48);
+        const handleResize = () => setDynamicHourHeight(window.innerWidth < 768 ? 36 : 42);
         handleResize();
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
@@ -268,6 +282,41 @@ export default function ClassesPage() {
         }
     };
 
+    const handleMoveStudent = async (studentId: string, fromClassId: string, toClassId: string) => {
+        if (fromClassId === toClassId) return;
+
+        // Optimistic UI update
+        setClasses(prev => prev.map(cls => {
+            if (cls.id === fromClassId) {
+                return {
+                    ...cls,
+                    student_count: (cls.student_count || 1) - 1,
+                    enrolled_students: cls.enrolled_students?.filter(s => s.id !== studentId)
+                }
+            }
+            if (cls.id === toClassId) {
+                // We'd need the student name for a perfect optimistic update,
+                // but let's just decrement/increment counts for now and re-fetch for full state.
+                const studentToMove = allStudents.find(s => s.id === studentId);
+                return {
+                    ...cls,
+                    student_count: (cls.student_count || 0) + 1,
+                    enrolled_students: studentToMove ? [...(cls.enrolled_students || []), { id: studentToMove.id, name: studentToMove.name }] : cls.enrolled_students
+                }
+            }
+            return cls;
+        }));
+
+        try {
+            await supabase.from('class_students').delete().eq('class_id', fromClassId).eq('student_id', studentId);
+            await supabase.from('class_students').insert({ class_id: toClassId, student_id: studentId });
+            fetchData();
+        } catch (error: any) {
+            alert('학생 이동 실패: ' + error.message);
+            fetchData();
+        }
+    };
+
     // --- Core Logic: Drag Move & Resize ---
     const isOverlapping = (classId: string | null, dayOfWeek: number, startTime: string, endTime: string, currentClasses: ClassItem[]) => {
         const toMinutes = (time: string) => {
@@ -295,7 +344,10 @@ export default function ClassesPage() {
         if (!cls) return;
         const [sH, sM] = cls.start_time.split(':').map(Number);
         const [eH, eM] = cls.end_time.split(':').map(Number);
-        const durationMin = (eH < sH ? (eH + 24) * 60 + eM : eH * 60 + eM) - (sH * 60 + sM);
+        const sTotal = (sH < 8 ? sH + 24 : sH) * 60 + (sM || 0);
+        const eTotal = (eH < 8 ? eH + 24 : eH) * 60 + (eM || 0);
+        const durationMin = eTotal - sTotal;
+
         const newStart = `${hour.toString().padStart(2, '0')}:00:00`;
         const endHourTotal = (hour * 60 + durationMin);
         const newEndH = (Math.floor(endHourTotal / 60)) % 24;
@@ -307,18 +359,33 @@ export default function ClassesPage() {
             return;
         }
 
+        // Optimistic UI Update
+        const updatedClasses = classes.map(c =>
+            c.id === classId
+                ? { ...c, day_of_week: dayOfWeek, start_time: newStart, end_time: newEnd }
+                : c
+        );
+        setClasses(updatedClasses);
+        setDragOverPos(null);
+        setDraggedClassId(null);
+
         const { error } = await supabase.from('classes').update({ day_of_week: dayOfWeek, start_time: newStart, end_time: newEnd }).eq('id', classId);
-        if (error) alert('이동 실패: ' + error.message);
-        else fetchData();
+        if (error) {
+            alert('이동 실패: ' + error.message);
+            fetchData(); // Rollback/Sync on error
+        }
     };
 
     const handleResizeStart = (e: React.MouseEvent, classId: string) => {
-        e.preventDefault(); e.stopPropagation(); setResizingId(classId);
-        const onMouseUp = async (upEvent: MouseEvent) => {
-            document.removeEventListener('mouseup', onMouseUp); setResizingId(null);
+        e.preventDefault(); e.stopPropagation();
+        setResizingId(classId);
+        isActuallyResizing.current = false;
+
+        const onMouseMove = (moveEvent: MouseEvent) => {
             if (!timetableRef.current) return;
+            isActuallyResizing.current = true;
             const gridRect = timetableRef.current.getBoundingClientRect();
-            const relativeY = upEvent.clientY - gridRect.top;            // HOUR_HEIGHT per hour
+            const relativeY = moveEvent.clientY - gridRect.top;
             let targetHour = Math.round(relativeY / dynamicHourHeight) + 8;
 
             const cls = classes.find(c => c.id === classId);
@@ -328,19 +395,57 @@ export default function ClassesPage() {
             const startH = (sH < 8 ? sH + 24 : sH);
             if (targetHour <= startH) targetHour = startH + 1;
 
-            const finalEndH = targetHour % 24;
+            lastTargetHourRef.current = targetHour;
+            if (targetHour !== resizePreviewEndHour) {
+                setResizePreviewEndHour(targetHour);
+            }
+        };
+
+        const onMouseUp = async (upEvent: MouseEvent) => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+
+            const finalEndHour = lastTargetHourRef.current;
+            setResizingId(null);
+            setResizePreviewEndHour(null);
+            lastTargetHourRef.current = null;
+
+            if (!isActuallyResizing.current || finalEndHour === null) {
+                return;
+            }
+
+            const cls = classes.find(c => c.id === classId);
+            if (!cls) return;
+
+            const finalEndH = finalEndHour % 24;
             const newEndTime = `${finalEndH.toString().padStart(2, '0')}:00:00`;
 
             if (isOverlapping(classId, cls.day_of_week, cls.start_time, newEndTime, classes)) {
                 alert('해당 시간에 이미 다른 수업이 있습니다.');
+                fetchData(); // Reset UI if optimistic update happened incorrectly elsewhere
                 return;
             }
 
+            // Optimistic UI Update
+            setClasses(prev => prev.map(c =>
+                c.id === classId
+                    ? { ...c, end_time: newEndTime }
+                    : c
+            ));
+
             const { error } = await supabase.from('classes').update({ end_time: newEndTime }).eq('id', classId);
-            if (error) alert('시간 변경 실패: ' + error.message);
-            else fetchData();
+            if (error) {
+                alert('시간 변경 실패: ' + error.message);
+                fetchData();
+            }
+
+            // Keep isActuallyResizing true for a split second to block the click event
+            setTimeout(() => {
+                isActuallyResizing.current = false;
+            }, 100);
         };
 
+        document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
     };
 
@@ -376,6 +481,16 @@ export default function ClassesPage() {
     const getGlassyStyle = (colorName: string) => {
         const color = COLORS.find(c => c.name === colorName) || COLORS[0];
         return { background: `linear-gradient(135deg, ${color.hex}22 0%, ${color.hex}11 100%)`, borderLeft: `3px solid ${color.hex}`, color: color.hex };
+    };
+
+    const getPreviewStyle = (colorName: string) => {
+        const color = COLORS.find(c => c.name === colorName) || COLORS[0];
+        return {
+            background: `${color.hex}08`,
+            borderColor: `${color.hex}88`,
+            borderWidth: '2px',
+            borderStyle: 'dashed'
+        };
     };
 
     const handleAddClass = async () => {
@@ -427,8 +542,8 @@ export default function ClassesPage() {
 
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-4 md:px-0">
                     <div className="flex-1 min-w-0">
-                        <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">수업 관리</h1>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">수업 관리</h1>
+                        <p className="text-xs md:text-sm text-gray-400 mt-1 font-medium">
                             {userRole === 'teacher' || userRole === 'admin'
                                 ? '드래그로 이동 및 시간 조절이 가능합니다.'
                                 : userRole === 'parent'
@@ -442,12 +557,12 @@ export default function ClassesPage() {
                             {selectedPresetId && currentPreset?.teacher_id === userId && (
                                 <button
                                     onClick={handleTogglePublic}
-                                    className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all border ${currentPreset.is_public ? 'bg-orange-50 border-orange-200 text-orange-600' : 'bg-gray-50 border-gray-100 text-gray-400'}`}
+                                    className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition-all border ${currentPreset.is_public ? 'bg-primary/5 border-primary/20 text-primary' : 'bg-gray-50 border-gray-100 text-gray-400'}`}
                                 >
                                     {currentPreset.is_public ? '✅ 공개 중' : '공개 프리셋으로 설정'}
                                 </button>
                             )}
-                            <button onClick={() => setShowAddModal(true)} className="px-5 py-2.5 bg-gray-900 text-white rounded-2xl text-xs font-bold shadow-lg flex items-center gap-2">
+                            <button onClick={() => setShowAddModal(true)} className="px-6 py-2.5 bg-gray-900 text-white rounded-2xl text-xs font-bold shadow-xl hover:bg-black transition-all flex items-center gap-2 active:scale-95">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                                 수업 추가
                             </button>
@@ -458,68 +573,79 @@ export default function ClassesPage() {
                 {/* Preset Bar */}
                 {(userRole === 'teacher' || userRole === 'admin') && (
                     <div className="px-4 md:px-0">
-                        <div className="bg-gray-50/50 p-2 md:p-3 rounded-3xl flex flex-wrap items-center gap-3">
-                            <select
-                                value={selectedPresetId}
-                                onChange={(e) => setSelectedPresetId(e.target.value)}
-                                className="px-4 py-2 bg-white border border-gray-100 rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-gray-200"
-                            >
-                                <option value="">프리셋 불러오기...</option>
-                                <optgroup label="나의 프리셋">
-                                    {presets.filter(p => p.teacher_id === userId).map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}{p.is_public ? ' (공개)' : ''}</option>
-                                    ))}
-                                </optgroup>
-                                <optgroup label="공개 프리셋">
-                                    {presets.filter(p => p.teacher_id !== userId && p.is_public).map(p => (
+                        <div className="glass-panel p-2 rounded-[24px] flex flex-wrap items-center gap-2">
+                            <div className="relative group">
+                                <select
+                                    className="pl-4 pr-10 py-2 bg-gray-50/50 rounded-xl font-bold text-xs appearance-none outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer border-none"
+                                    value={selectedPresetId}
+                                    onChange={e => setSelectedPresetId(e.target.value)}
+                                >
+                                    <option value="">프리셋 불러오기</option>
+                                    {presets.map(p => (
                                         <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
-                                </optgroup>
-                            </select>
+                                </select>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 group-hover:text-primary transition-colors">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                            </div>
 
                             {selectedPresetId && (
-                                <button onClick={handleApplyPreset} disabled={loading} className="px-4 py-2 bg-gray-900 text-white rounded-2xl text-[11px] font-black hover:bg-gray-800 transition-all shadow-sm">
-                                    적용하기
-                                </button>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={handleApplyPreset}
+                                        disabled={!selectedPresetId}
+                                        className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-black hover:bg-primary-hover shadow-sm disabled:opacity-30 transition-all active:scale-95"
+                                    >
+                                        적용
+                                    </button>
+                                    <button
+                                        onClick={handleDeletePreset}
+                                        className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all active:scale-95"
+                                        title="프리셋 삭제"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                </div>
                             )}
 
-                            {selectedPresetId && currentPreset?.teacher_id === userId && (
-                                <button onClick={handleDeletePreset} className="p-2 text-gray-400 hover:text-red-500 rounded-xl hover:bg-red-50 transition-all">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                </button>
-                            )}
-
-                            <div className="h-6 w-px bg-gray-200 mx-1 hidden md:block" />
+                            <div className="flex-1" />
 
                             <button
                                 onClick={() => setShowSavePresetModal(true)}
-                                className="ml-auto flex items-center gap-2 px-4 py-2 text-orange-600 bg-orange-50 rounded-2xl text-xs font-bold hover:bg-orange-100 transition-all"
+                                className="flex items-center gap-2 px-4 py-2 text-primary bg-primary/5 rounded-xl text-xs font-black hover:bg-primary/10 transition-all active:scale-95"
                             >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-                                현재 시간표 저장
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                                <span className="hidden sm:inline">현재 시간표 저장</span>
+                                <span className="sm:hidden">저장</span>
                             </button>
                         </div>
                     </div>
                 )}
 
                 {/* Timetable Grid */}
-                <div className="bg-white rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm overflow-hidden overflow-x-auto custom-scrollbar">
-                    <div className="min-w-[600px] md:min-w-[800px]">
-                        <div className="grid grid-cols-[60px_repeat(7,1fr)] md:grid-cols-[80px_repeat(7,1fr)] bg-gray-50/20 border-b border-gray-100">
+                <div className="glass-panel mx-4 md:mx-0 rounded-[40px] shadow-glow overflow-hidden overflow-x-auto custom-scrollbar">
+                    <div className="min-w-[600px] md:min-w-0">
+                        <div className="grid grid-cols-[60px_repeat(7,1fr)] bg-gray-50/10 border-b border-gray-100">
                             <div className="p-3 md:p-4" />
                             {DISPLAY_DAYS.map(dayIdx => (
-                                <div key={dayIdx} className="p-3 md:p-4 text-center font-black text-[8px] md:text-[9px] text-gray-400 uppercase tracking-widest">{DAYS[dayIdx]}</div>
+                                <div key={dayIdx} className="p-3 md:p-4 text-center font-black text-[9px] text-gray-400 uppercase tracking-[0.2em]">{DAYS[dayIdx]}</div>
                             ))}
                         </div>
                         <div className="relative" style={{ height: `${HOURS.length * dynamicHourHeight}px` }} ref={timetableRef}>
                             {HOURS.map((hour, idx) => (
-                                <div key={idx} className="grid grid-cols-[60px_repeat(7,1fr)] md:grid-cols-[80px_repeat(7,1fr)] border-b border-gray-50 last:border-0" style={{ height: `${dynamicHourHeight}px` }}>
-                                    <div className="flex items-start justify-center pt-1.5 text-[8px] md:text-[9px] font-bold text-gray-300">{hour.toString().padStart(2, '0')}:00</div>
+                                <div key={idx} className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-gray-50/50 last:border-0" style={{ height: `${dynamicHourHeight}px` }}>
+                                    <div className="flex items-start justify-center pt-2 text-[9px] font-bold text-gray-300 font-mono">{hour.toString().padStart(2, '0')}:00</div>
                                     {DISPLAY_DAYS.map(dayIdx => (
                                         <div
                                             key={dayIdx}
-                                            className="border-r border-gray-50 last:border-0 hover:bg-gray-50/30 transition-colors"
-                                            onDragOver={(e) => e.preventDefault()}
+                                            className="border-r border-gray-50/50 last:border-0 hover:bg-primary/[0.02] transition-colors"
+                                            onDragOver={(e) => {
+                                                e.preventDefault();
+                                                if (dragOverPos?.dayIdx !== dayIdx || dragOverPos?.hour !== hour) {
+                                                    setDragOverPos({ dayIdx, hour });
+                                                }
+                                            }}
                                             onDrop={(e) => {
                                                 const classId = e.dataTransfer.getData('classId');
                                                 if (classId) handleClassDrop(classId, dayIdx, hour);
@@ -528,39 +654,144 @@ export default function ClassesPage() {
                                     ))}
                                 </div>
                             ))}
-                            <div className="absolute top-0 left-[60px] md:left-[80px] right-0 h-full pointer-events-none">
+                            <div className="absolute top-0 left-[60px] right-0 h-full pointer-events-none">
                                 <div className="grid grid-cols-7 h-full">
                                     {DISPLAY_DAYS.map(dayIdx => (
                                         <div key={dayIdx} className="relative h-full">
                                             {classes.filter(cls => cls.day_of_week === dayIdx).map(cls => (
                                                 <div
                                                     key={cls.id}
-                                                    draggable={(userRole === 'teacher' || userRole === 'admin') && !resizingId}
-                                                    onDragStart={(e) => { e.dataTransfer.setData('classId', cls.id); setIsDragging(true); }}
-                                                    onDragEnd={() => setIsDragging(false)}
-                                                    onClick={() => (userRole === 'teacher' || userRole === 'admin') && openManageModal(cls)}
-                                                    className={`absolute left-0.5 right-0.5 md:left-1 md:right-1 rounded-lg md:rounded-xl p-1.5 md:p-3 shadow-sm cursor-grab active:cursor-grabbing hover:scale-[1.01] transition-all group pointer-events-auto backdrop-blur-sm overflow-hidden flex flex-col ${resizingId === cls.id ? 'z-50 ring-2 ring-orange-400' : ''}`}
+                                                    draggable={(userRole === 'teacher' || userRole === 'admin') && !resizingId && !isDraggingStudent}
+                                                    onDragStart={(e) => {
+                                                        if (isDraggingStudent) return;
+                                                        e.dataTransfer.setData('classId', cls.id);
+                                                        setDraggedClassId(cls.id);
+                                                        setIsDragging(true);
+                                                    }}
+                                                    onDragEnd={() => {
+                                                        setIsDragging(false);
+                                                        setDraggedClassId(null);
+                                                        setDragOverPos(null);
+                                                    }}
+                                                    onClick={() => {
+                                                        if (isActuallyResizing.current) return;
+                                                        (userRole === 'teacher' || userRole === 'admin') && openManageModal(cls)
+                                                    }}
+                                                    onDragOver={(e) => {
+                                                        if (e.dataTransfer.types.includes('application/x-student-id')) {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                        }
+                                                    }}
+                                                    onDrop={(e) => {
+                                                        const studentId = e.dataTransfer.getData('application/x-student-id');
+                                                        const fromClassId = e.dataTransfer.getData('application/x-from-class-id');
+                                                        if (studentId && fromClassId) {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            handleMoveStudent(studentId, fromClassId, cls.id);
+                                                            setIsDraggingStudent(false);
+                                                        }
+                                                    }}
+                                                    className={`absolute left-0.5 right-0.5 md:left-1 md:right-1 rounded-md md:rounded-lg p-2 md:p-3 shadow-md cursor-grab active:cursor-grabbing hover:scale-[1.02] transition-all group pointer-events-auto backdrop-blur-md overflow-hidden flex flex-col ${resizingId === cls.id ? 'z-50 ring-2 ring-primary scale-105' : ''}`}
                                                     style={{ ...getGlassyStyle(cls.color), ...getPositionStyle(cls.start_time, cls.end_time) }}
                                                 >
                                                     <div className="flex justify-between items-start gap-1">
-                                                        <h4 className="text-[10px] md:text-[12px] font-bold leading-none truncate">{cls.name}</h4>
+                                                        <h4 className="text-[10px] md:text-[13px] font-black leading-tight truncate tracking-tight">{cls.name}</h4>
                                                         {(userRole === 'teacher' || userRole === 'admin') && (
-                                                            <button onClick={(e) => { e.stopPropagation(); handleDuplicateClass(cls); }} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-white/50 rounded transition-all shrink-0">
-                                                                <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                                                            <button onClick={(e) => { e.stopPropagation(); handleDuplicateClass(cls); }} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/40 rounded-lg transition-all shrink-0">
+                                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                                                             </button>
                                                         )}
                                                     </div>
-                                                    <div className="mt-auto flex items-center justify-between">
-                                                        <span className="text-[8px] md:text-[9px] font-bold opacity-60 leading-none">{cls.student_count}명</span>
-                                                        <span className="text-[7px] md:text-[8px] font-mono opacity-40 leading-none">{cls.start_time.slice(0, 5)}</span>
+
+                                                    {/* Enrolled Students List (Visible if height >= 60px) */}
+                                                    {(() => {
+                                                        const [sH, sM] = cls.start_time.split(':').map(Number);
+                                                        const [eH, eM] = cls.end_time.split(':').map(Number);
+                                                        const durationMin = (eH < sH ? (eH + 24) * 60 + eM : eH * 60 + eM) - (sH * 60 + (sM || 0));
+                                                        if (durationMin >= 60 && cls.enrolled_students && cls.enrolled_students.length > 0) {
+                                                            return (
+                                                                <div className="mt-1.5 flex flex-wrap gap-1 max-h-[60%] overflow-hidden">
+                                                                    {cls.enrolled_students.map((s, idx) => (
+                                                                        <span
+                                                                            key={idx}
+                                                                            draggable={userRole === 'teacher' || userRole === 'admin'}
+                                                                            onDragStart={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setIsDraggingStudent(true);
+                                                                                e.dataTransfer.setData('application/x-student-id', (s as any).id);
+                                                                                e.dataTransfer.setData('application/x-from-class-id', cls.id);
+                                                                                e.dataTransfer.effectAllowed = 'move';
+                                                                            }}
+                                                                            onDragEnd={() => setIsDraggingStudent(false)}
+                                                                            className={`text-[7px] md:text-[10px] font-bold bg-white/40 text-black/70 px-1.5 py-0.5 rounded-md leading-none border border-white/20 transition-all ${(userRole === 'teacher' || userRole === 'admin')
+                                                                                    ? 'cursor-move hover:bg-white/60 active:scale-95'
+                                                                                    : 'cursor-default'
+                                                                                }`}
+                                                                        >
+                                                                            {s.name}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
+
+                                                    <div className="mt-auto flex items-center justify-between gap-1">
+                                                        <span className="text-[8px] md:text-[10px] font-bold opacity-60 leading-none truncate">{cls.student_count}명 수강</span>
+                                                        <span className="text-[7px] md:text-[9px] font-black font-mono opacity-50 bg-white/30 px-1.5 py-0.5 rounded-md leading-none">{cls.start_time.slice(0, 5)}</span>
                                                     </div>
                                                     {(userRole === 'teacher' || userRole === 'admin') && (
-                                                        <div className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize flex items-center justify-center hover:bg-black/5" onMouseDown={(e) => handleResizeStart(e, cls.id)}>
-                                                            <div className="w-6 h-0.5 bg-black/10 rounded-full" />
+                                                        <div className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize flex items-center justify-center hover:bg-black/5" onMouseDown={(e) => handleResizeStart(e, cls.id)}>
+                                                            <div className="w-8 h-1 bg-black/10 rounded-full" />
                                                         </div>
                                                     )}
                                                 </div>
                                             ))}
+
+                                            {/* Drag Preview */}
+                                            {isDragging && draggedClassId && dragOverPos && dragOverPos.dayIdx === dayIdx && (
+                                                (() => {
+                                                    const draggedCls = classes.find(c => c.id === draggedClassId);
+                                                    if (!draggedCls) return null;
+                                                    const [sH, sM] = draggedCls.start_time.split(':').map(Number);
+                                                    const [eH, eM] = draggedCls.end_time.split(':').map(Number);
+                                                    const sTotal = (sH < 8 ? sH + 24 : sH) * 60 + (sM || 0);
+                                                    const eTotal = (eH < 8 ? eH + 24 : eH) * 60 + (eM || 0);
+                                                    const durationMin = eTotal - sTotal;
+
+                                                    const startPos = (dragOverPos.hour - 8) * dynamicHourHeight;
+                                                    const height = (durationMin / 60) * dynamicHourHeight;
+
+                                                    return (
+                                                        <div
+                                                            className="absolute left-0.5 right-0.5 md:left-1 md:right-1 rounded-md md:rounded-lg pointer-events-none z-[60]"
+                                                            style={{ ...getPreviewStyle(draggedCls.color), top: `${startPos}px`, height: `${height}px` }}
+                                                        />
+                                                    );
+                                                })()
+                                            )}
+
+                                            {/* Resize Preview */}
+                                            {resizingId && resizePreviewEndHour !== null && classes.find(c => c.id === resizingId)?.day_of_week === dayIdx && (
+                                                (() => {
+                                                    const resizingCls = classes.find(c => c.id === resizingId);
+                                                    if (!resizingCls) return null;
+                                                    const [sH, sM] = resizingCls.start_time.split(':').map(Number);
+                                                    const startH = (sH < 8 ? sH + 24 : sH);
+                                                    const startPos = (startH - 8) * dynamicHourHeight + (sM / 60) * dynamicHourHeight;
+                                                    const height = (resizePreviewEndHour - startH) * dynamicHourHeight - (sM / 60) * dynamicHourHeight;
+
+                                                    return (
+                                                        <div
+                                                            className="absolute left-0.5 right-0.5 md:left-1 md:right-1 rounded-md md:rounded-lg pointer-events-none z-[60]"
+                                                            style={{ ...getPreviewStyle(resizingCls.color), top: `${startPos}px`, height: `${height}px` }}
+                                                        />
+                                                    );
+                                                })()
+                                            )}
                                         </div>
                                     ))}
                                 </div>

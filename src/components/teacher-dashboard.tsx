@@ -31,9 +31,20 @@ export default function TeacherDashboard({ userName }: TeacherDashboardProps) {
             try {
                 const today = new Date().toISOString().split('T')[0];
 
-                // 1. 전체 데이터 병렬 패칭
+                // 1. 오늘 수업이 있는 학생 목록 가져오기
+                const dayOfWeek = new Date().getDay();
+                const { data: todayClasses } = await supabase.from('classes').select('id').eq('day_of_week', dayOfWeek);
+                const classIds = todayClasses?.map(c => c.id) || [];
+
+                let targetStudentIds: string[] = [];
+                if (classIds.length > 0) {
+                    const { data: enrolled } = await supabase.from('class_students').select('student_id').in('class_id', classIds);
+                    targetStudentIds = Array.from(new Set(enrolled?.map(s => s.student_id) || []));
+                }
+
+                // 2. 전체 데이터 병렬 패칭
                 const [
-                    { count: studentCount },
+                    { count: totalStudentCount },
                     { count: attendanceCount },
                     { count: assignmentCount },
                     { count: classCount },
@@ -42,7 +53,9 @@ export default function TeacherDashboard({ userName }: TeacherDashboardProps) {
                     { data: pendingData }
                 ] = await Promise.all([
                     supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student'),
-                    supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('date', today).eq('status', 'present'),
+                    targetStudentIds.length > 0
+                        ? supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('date', today).eq('status', 'present').in('student_id', targetStudentIds)
+                        : Promise.resolve({ count: 0 }),
                     supabase.from('assignments').select('*', { count: 'exact', head: true }).eq('status', 'active'),
                     supabase.from('classes').select('*', { count: 'exact', head: true }),
                     supabase.from('submissions').select('submitted_at, users(name), assignments(title)').order('submitted_at', { ascending: false }).limit(4),
@@ -50,13 +63,14 @@ export default function TeacherDashboard({ userName }: TeacherDashboardProps) {
                     supabase.from('users').select('*').eq('role', 'student').eq('is_approved', false)
                 ]);
 
-                const attendanceRate = studentCount && studentCount > 0
-                    ? Math.round(((attendanceCount || 0) / studentCount) * 100)
+                const targetCount = targetStudentIds.length;
+                const attendanceRate = targetCount > 0
+                    ? Math.round(((attendanceCount || 0) / targetCount) * 100)
                     : 0;
 
                 setStats([
-                    { label: '전체 학생', value: String(studentCount || 0), change: '', positive: true },
-                    { label: '오늘 출석', value: String(attendanceCount || 0), change: `${attendanceRate}%`, positive: true },
+                    { label: '전체 학생', value: String(totalStudentCount || 0), change: '', positive: true },
+                    { label: '오늘 출석', value: `${attendanceCount || 0}/${targetCount}`, change: `${attendanceRate}%`, positive: true },
                     { label: '미제출 과제', value: String(assignmentCount || 0), change: '', positive: false },
                     { label: '활성 수업', value: String(classCount || 0), change: '', positive: true },
                 ]);

@@ -217,15 +217,15 @@ export default function AssignmentsPage() {
     const getStatusBadge = (asgn: Assignment) => {
         if (userRole === 'student' || userRole === 'parent') {
             return asgn.my_submission
-                ? <span className="px-3 py-1 bg-green-50 text-green-600 text-[10px] rounded-full font-black uppercase">제출완료</span>
-                : <span className="px-3 py-1 bg-orange-50 text-orange-600 text-[10px] rounded-full font-black uppercase">미제출</span>;
+                ? <span className="px-3 py-1 bg-green-500/10 text-green-600 text-[10px] rounded-full font-black uppercase tracking-wider">제출완료</span>
+                : <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] rounded-full font-black uppercase tracking-wider">미제출</span>;
         }
 
         switch (asgn.status) {
             case 'active':
-                return <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] rounded-full font-black uppercase tracking-wider">진행중</span>;
+                return <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] rounded-full font-black uppercase tracking-wider">진행중</span>;
             case 'closed':
-                return <span className="px-3 py-1 bg-gray-50 text-gray-400 text-[10px] rounded-full font-black uppercase tracking-wider">마감</span>;
+                return <span className="px-3 py-1 bg-gray-100 text-gray-400 text-[10px] rounded-full font-black uppercase tracking-wider">마감</span>;
             default:
                 return null;
         }
@@ -237,8 +237,8 @@ export default function AssignmentsPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">과제 관리</h1>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">과제 관리</h1>
+                        <p className="text-xs md:text-sm text-gray-400 mt-1 font-medium">
                             {userRole === 'teacher' || userRole === 'admin'
                                 ? '학생들에게 과제를 출제하고 현황을 관리하세요'
                                 : userRole === 'parent'
@@ -249,7 +249,7 @@ export default function AssignmentsPage() {
                     {(userRole === 'teacher' || userRole === 'admin') && (
                         <button
                             onClick={() => setShowAddModal(true)}
-                            className="px-5 py-2.5 bg-gray-900 text-white rounded-2xl text-xs font-bold shadow-lg flex items-center gap-2 shrink-0"
+                            className="px-6 py-2.5 bg-gray-900 text-white rounded-2xl text-xs font-black shadow-xl hover:bg-black transition-all flex items-center gap-2 shrink-0 active:scale-95"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
                             새 과제 내기
@@ -259,7 +259,7 @@ export default function AssignmentsPage() {
 
                 {loading ? (
                     <div className="py-20 flex justify-center">
-                        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : assignments.length > 0 ? (
                     <div className="grid grid-cols-1 gap-4">
@@ -267,7 +267,7 @@ export default function AssignmentsPage() {
                             <div
                                 key={asgn.id}
                                 onClick={() => router.push(`/assignments/${asgn.id}`)}
-                                className="bg-white rounded-[32px] p-6 md:p-8 shadow-sm border border-gray-50 hover:border-indigo-100 transition-all group overflow-hidden relative cursor-pointer"
+                                className="glass-panel rounded-[32px] p-6 md:p-8 hover:border-primary/30 transition-all group overflow-hidden relative cursor-pointer hover:shadow-glow"
                             >
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                                     <div className="flex-1 min-w-0">
@@ -275,10 +275,10 @@ export default function AssignmentsPage() {
                                             {getStatusBadge(asgn)}
                                             <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{asgn.classes?.name}</span>
                                         </div>
-                                        <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors truncate">
+                                        <h3 className="text-xl font-black text-gray-900 mb-2 group-hover:text-primary transition-colors truncate tracking-tight">
                                             {asgn.title}
                                         </h3>
-                                        <p className="text-sm text-gray-400 font-medium line-clamp-1 mb-4">
+                                        <p className="text-sm text-gray-400 font-medium line-clamp-1 mb-5">
                                             {asgn.description || '과제 설명이 없습니다.'}
                                         </p>
 
@@ -316,18 +316,18 @@ export default function AssignmentsPage() {
                                             </div>
                                             <p className="text-[9px] font-black text-gray-300 uppercase tracking-[0.2em]">제출 현황</p>
                                         </div>
-                                        <button className="w-12 h-12 bg-gray-50 text-gray-300 group-hover:bg-indigo-600 group-hover:text-white rounded-2xl flex items-center justify-center transition-all shadow-sm group-hover:shadow-indigo-200">
+                                        <button className="w-12 h-12 glass-panel bg-white/50 text-gray-300 group-hover:bg-primary group-hover:text-white rounded-2xl flex items-center justify-center transition-all shadow-sm group-hover:shadow-glow border-0">
                                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                                         </button>
                                     </div>
                                 </div>
                                 {/* Decorative line */}
-                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-50 group-hover:bg-indigo-500 transition-colors" />
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-100 group-hover:bg-primary transition-colors" />
                             </div>
                         ))}
                     </div>
                 ) : (
-                    <div className="py-20 text-center bg-white rounded-[40px] border border-gray-50 shadow-sm">
+                    <div className="py-20 text-center glass-panel rounded-[40px] border-0">
                         <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-200">
                             <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                         </div>
@@ -418,7 +418,7 @@ export default function AssignmentsPage() {
                                     <button
                                         onClick={handleAddAssignment}
                                         disabled={isUploading}
-                                        className="flex-[2] py-5 bg-indigo-600 text-white font-black rounded-[24px] shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 text-xs uppercase tracking-widest"
+                                        className="flex-[2] py-5 bg-primary text-white font-black rounded-[24px] shadow-xl shadow-primary/20 hover:bg-primary-hover transition-all active:scale-95 disabled:opacity-50 text-xs uppercase tracking-widest"
                                     >
                                         {isUploading ? '업로드 중...' : '과제 출제하기'}
                                     </button>
