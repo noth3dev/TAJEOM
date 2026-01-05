@@ -138,7 +138,8 @@ export default function TeacherDashboard({ userName }: TeacherDashboardProps) {
             setPendingStudents(prev => prev.filter(s => s.id !== studentId));
             alert('승인이 완료되었습니다.');
         } else {
-            alert('승인 중 오류가 발생했습니다.');
+            console.error('Approval error:', error);
+            alert(`승인 중 오류가 발생했습니다: ${error.message}`);
         }
     };
 
