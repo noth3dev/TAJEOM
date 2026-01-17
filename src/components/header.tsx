@@ -32,6 +32,11 @@ const icons: Record<string, ReactNode> = {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
     ),
+    table: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+    ),
 };
 
 export default function Header() {
@@ -61,7 +66,8 @@ export default function Header() {
     const navItems = [
         { href: '/', label: '대시보드', icon: 'home' },
         ...(userInfo.role === 'teacher' || userInfo.role === 'admin' ? [
-            { href: '/account', label: '계정 관리', icon: 'clipboard' }
+            { href: '/account', label: '계정 관리', icon: 'clipboard' },
+            { href: '/students', label: '학생 관리', icon: 'table' }
         ] : []),
         { href: '/classes', label: '수업 관리', icon: 'book' },
         { href: '/assignments', label: '과제 관리', icon: 'clipboard' },

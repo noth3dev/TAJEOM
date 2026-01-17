@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/dashboard-layout';
 import { supabase } from '@/lib/supabase';
+import { PDFDocument } from 'pdf-lib';
 
 interface ClassItem {
     id: string;
@@ -43,8 +44,11 @@ export default function AssignmentsPage() {
         description: '',
         class_id: '',
         due_date: '',
-        file: null as File | null
+        file: null as File | null,
+        page_range: ''
     });
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [rangeError, setRangeError] = useState<string | null>(null);
 
     const DAYS_TEXT = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -151,6 +155,49 @@ export default function AssignmentsPage() {
 
     useEffect(() => { fetchData(); }, []);
 
+    useEffect(() => {
+        let isCancelled = false;
+        let timeoutId: NodeJS.Timeout;
+
+        const updatePreview = async () => {
+            if (newAssignment.file) {
+                try {
+                    const processedFile = await processPdfRange(newAssignment.file, newAssignment.page_range);
+                    if (isCancelled) return;
+
+                    const url = URL.createObjectURL(processedFile);
+                    setPreviewUrl(url);
+                    setRangeError(null);
+                } catch (error: any) {
+                    if (isCancelled) return;
+                    console.error('Preview processing error:', error);
+                    const url = URL.createObjectURL(newAssignment.file);
+                    setPreviewUrl(url);
+                    setRangeError(error.message);
+                }
+            } else {
+                setPreviewUrl(null);
+            }
+        };
+
+        timeoutId = setTimeout(updatePreview, 400);
+
+        return () => {
+            isCancelled = true;
+            clearTimeout(timeoutId);
+        };
+    }, [newAssignment.file, newAssignment.page_range]);
+
+    // Cleanup object URLs when previewUrl changes to avoid memory leaks
+    useEffect(() => {
+        const currentUrl = previewUrl;
+        return () => {
+            if (currentUrl && currentUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(currentUrl);
+            }
+        };
+    }, [previewUrl]);
+
     const handleFileUpload = async (file: File) => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -169,6 +216,62 @@ export default function AssignmentsPage() {
         return publicUrl;
     };
 
+    const processPdfRange = async (file: File, range: string): Promise<File> => {
+        if (!range.trim()) return file;
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(arrayBuffer);
+        const totalPages = pdfDoc.getPageCount();
+        const newPdfDoc = await PDFDocument.create();
+
+        // Range parsing logic (e.g., "1, 3-5, 7-")
+        const parts = range.split(',').map(p => p.trim());
+        const pagesToInclude: number[] = [];
+
+        for (const part of parts) {
+            if (part.includes('-')) {
+                const [startStr, endStr] = part.split('-');
+                const start = parseInt(startStr) || 1;
+                const end = endStr ? parseInt(endStr) : totalPages;
+
+                if (start > totalPages) {
+                    throw new Error(`시작 페이지(${start})가 전체 페이지(${totalPages})보다 큽니다.`);
+                }
+                if (endStr && start > end) {
+                    throw new Error(`시작 페이지(${start})가 끝 페이지(${end})보다 큽니다.`);
+                }
+                if (start < 1) {
+                    throw new Error(`시작 페이지는 1 이상이어야 합니다.`);
+                }
+
+                for (let i = start; i <= end; i++) {
+                    if (i >= 1 && i <= totalPages) pagesToInclude.push(i - 1);
+                }
+            } else {
+                const page = parseInt(part);
+                if (isNaN(page)) continue;
+                if (page > totalPages) {
+                    throw new Error(`지정한 페이지(${page})가 전체 페이지(${totalPages})를 초과합니다.`);
+                }
+                if (page < 1) {
+                    throw new Error(`페이지 번호는 1 이상이어야 합니다.`);
+                }
+                pagesToInclude.push(page - 1);
+            }
+        }
+
+        if (pagesToInclude.length === 0) return file;
+
+        // Remove duplicates and sort
+        const uniquePages = Array.from(new Set(pagesToInclude)).sort((a, b) => a - b);
+
+        const copiedPages = await newPdfDoc.copyPages(pdfDoc, uniquePages);
+        copiedPages.forEach(page => newPdfDoc.addPage(page));
+
+        const pdfBytes = await newPdfDoc.save();
+        return new File([pdfBytes], file.name, { type: 'application/pdf' });
+    };
+
     const handleAddAssignment = async () => {
         if (!newAssignment.title || !newAssignment.class_id) {
             alert('필수 정보를 입력해 주세요.');
@@ -179,7 +282,8 @@ export default function AssignmentsPage() {
         try {
             let fileUrl = '';
             if (newAssignment.file) {
-                fileUrl = await handleFileUpload(newAssignment.file);
+                const processedFile = await processPdfRange(newAssignment.file, newAssignment.page_range);
+                fileUrl = await handleFileUpload(processedFile);
             }
 
             // 마감 기한 자동 설정 로직
@@ -205,7 +309,7 @@ export default function AssignmentsPage() {
 
             alert('과제가 성공적으로 출제되었습니다.');
             setShowAddModal(false);
-            setNewAssignment({ title: '', description: '', class_id: '', due_date: '', file: null });
+            setNewAssignment({ title: '', description: '', class_id: '', due_date: '', file: null, page_range: '' });
             fetchData();
         } catch (error: any) {
             alert('과제 출제 실패: ' + error.message);
@@ -337,91 +441,165 @@ export default function AssignmentsPage() {
 
                 {/* Add Assignment Modal */}
                 {showAddModal && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-gray-900/60 backdrop-blur-md">
-                        <div className="bg-white w-full max-w-lg rounded-[48px] p-8 md:p-12 shadow-2xl relative overflow-hidden animate-scale-in">
-                            <h2 className="text-2xl font-black text-gray-900 mb-8 text-center">신규 과제 등록</h2>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-gray-900/60 backdrop-blur-md">
+                        <div className="bg-white w-full max-w-6xl h-[90vh] md:h-auto md:max-h-[85vh] rounded-[40px] md:rounded-[56px] shadow-2xl relative overflow-hidden animate-scale-in flex flex-col md:flex-row">
 
-                            <div className="space-y-5">
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block px-1">과제 제목</label>
-                                    <input
-                                        type="text"
-                                        placeholder="과제 이름을 입력하세요"
-                                        className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold focus:bg-white border border-transparent focus:border-gray-100 outline-none transition-all text-sm"
-                                        value={newAssignment.title}
-                                        onChange={e => setNewAssignment({ ...newAssignment, title: e.target.value })}
+                            {/* Left Section: PDF Preview */}
+                            <div className="w-full md:w-[55%] bg-gray-50 border-r border-gray-100 flex flex-col relative overflow-hidden min-h-[300px] md:min-h-0">
+                                <div className="absolute top-8 left-8 z-10">
+                                    <div className="px-4 py-2 bg-white/80 backdrop-blur-md rounded-2xl shadow-sm border border-gray-100 flex items-center gap-2">
+                                        <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+                                        <span className="text-[11px] font-black text-gray-900 uppercase tracking-widest">PDF Preview</span>
+                                    </div>
+                                </div>
+
+                                {previewUrl ? (
+                                    <iframe
+                                        src={`${previewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+                                        className="w-full h-full border-none"
+                                        title="PDF Preview"
                                     />
-                                </div>
-
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block px-1 text-center">대상 수업 선택 (시간표)</label>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[180px] overflow-y-auto px-1 custom-scrollbar pb-2">
-                                        {myClasses.map(c => (
-                                            <button
-                                                key={c.id}
-                                                type="button"
-                                                onClick={() => setNewAssignment({ ...newAssignment, class_id: c.id })}
-                                                className={`p-3 rounded-[20px] border-2 transition-all flex flex-col items-center gap-1 ${newAssignment.class_id === c.id
-                                                    ? 'border-indigo-500 bg-indigo-50/50 shadow-sm'
-                                                    : 'border-gray-50 bg-gray-50/30 hover:border-gray-100'
-                                                    }`}
-                                            >
-                                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${newAssignment.class_id === c.id ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                                                    {DAYS_TEXT[c.day_of_week]} {c.start_time?.slice(0, 5) || '--:--'}
-                                                </span>
-                                                <span className={`text-[11px] font-bold text-center line-clamp-1 ${newAssignment.class_id === c.id ? 'text-indigo-600' : 'text-gray-500'}`}>
-                                                    {c.name}
-                                                </span>
-                                            </button>
-                                        ))}
+                                ) : (
+                                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+                                        <div className="w-24 h-24 bg-white rounded-[32px] shadow-sm flex items-center justify-center mb-6 border border-gray-50">
+                                            <svg className="w-10 h-10 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-gray-900 mb-2">파일을 선택해주세요</h3>
+                                        <p className="text-sm text-gray-400 max-w-[240px]">왼쪽에서 PDF 파일을 업로드하면 미리보기가 나타납니다.</p>
                                     </div>
-                                </div>
+                                )}
+                            </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block px-1">마감 기한</label>
-                                        <input
-                                            type="date"
-                                            className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold focus:bg-white border border-transparent focus:border-gray-100 outline-none transition-all text-sm"
-                                            value={newAssignment.due_date}
-                                            onChange={e => setNewAssignment({ ...newAssignment, due_date: e.target.value })}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block px-1">과제 파일 (PDF)</label>
-                                        <label className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold flex items-center justify-between cursor-pointer hover:bg-gray-100 transition-all">
-                                            <span className="text-xs text-gray-400 truncate max-w-[100px]">{newAssignment.file ? newAssignment.file.name : '파일 선택'}</span>
-                                            <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                                            <input type="file" accept=".pdf" className="hidden" onChange={e => setNewAssignment({ ...newAssignment, file: e.target.files?.[0] || null })} />
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block px-1">과제 설명 (선택)</label>
-                                    <textarea
-                                        placeholder="학생들에게 전달할 내용을 적어주세요"
-                                        rows={3}
-                                        className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold focus:bg-white border border-transparent focus:border-gray-100 outline-none transition-all text-sm resize-none"
-                                        value={newAssignment.description}
-                                        onChange={e => setNewAssignment({ ...newAssignment, description: e.target.value })}
-                                    />
-                                </div>
-
-                                <div className="flex gap-4 pt-6">
+                            {/* Right Section: Form */}
+                            <div className="flex-1 p-8 md:p-12 overflow-y-auto bg-white custom-scrollbar">
+                                <div className="flex items-center justify-between mb-10">
+                                    <h2 className="text-2xl font-black text-gray-900 tracking-tight">신규 과제 출제</h2>
                                     <button
                                         onClick={() => setShowAddModal(false)}
-                                        className="flex-1 py-5 bg-gray-50 text-gray-400 font-black rounded-[24px] hover:bg-gray-100 transition-all text-xs uppercase tracking-widest"
+                                        className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-colors"
                                     >
-                                        취소
+                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
                                     </button>
-                                    <button
-                                        onClick={handleAddAssignment}
-                                        disabled={isUploading}
-                                        className="flex-[2] py-5 bg-primary text-white font-black rounded-[24px] shadow-xl shadow-primary/20 hover:bg-primary-hover transition-all active:scale-95 disabled:opacity-50 text-xs uppercase tracking-widest"
-                                    >
-                                        {isUploading ? '업로드 중...' : '과제 출제하기'}
-                                    </button>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5 block px-1">과제 제목</label>
+                                        <input
+                                            type="text"
+                                            placeholder="과제 이름을 입력하세요"
+                                            className="w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold focus:bg-white border-2 border-transparent focus:border-indigo-500/10 outline-none transition-all text-sm"
+                                            value={newAssignment.title}
+                                            onChange={e => setNewAssignment({ ...newAssignment, title: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block px-1">대상 수업</label>
+                                        <div className="grid grid-cols-2 gap-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                                            {myClasses.map(c => (
+                                                <button
+                                                    key={c.id}
+                                                    type="button"
+                                                    onClick={() => setNewAssignment({ ...newAssignment, class_id: c.id })}
+                                                    className={`p-4 rounded-[24px] border-2 transition-all flex flex-col gap-1.5 ${newAssignment.class_id === c.id
+                                                        ? 'border-indigo-500 bg-indigo-50/30'
+                                                        : 'border-gray-50 bg-gray-50/50 hover:border-gray-100'
+                                                        }`}
+                                                >
+                                                    <span className={`text-[9px] font-black w-fit px-2 py-0.5 rounded-full ${newAssignment.class_id === c.id ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                                                        {DAYS_TEXT[c.day_of_week]} {c.start_time?.slice(0, 5) || '--:--'}
+                                                    </span>
+                                                    <span className={`text-[11px] font-bold truncate ${newAssignment.class_id === c.id ? 'text-indigo-600' : 'text-gray-500'}`}>
+                                                        {c.name}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5 block px-1">마감 기한</label>
+                                            <input
+                                                type="date"
+                                                className="w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold focus:bg-white border-2 border-transparent focus:border-indigo-500/10 outline-none transition-all text-sm"
+                                                value={newAssignment.due_date}
+                                                onChange={e => setNewAssignment({ ...newAssignment, due_date: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5 block px-1">과제 PDF 파일</label>
+                                            <label className="w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold flex items-center justify-between cursor-pointer hover:bg-gray-100 transition-all group/btn">
+                                                <span className="text-xs text-gray-400 truncate max-w-[120px]">{newAssignment.file ? newAssignment.file.name : 'PDF 선택'}</span>
+                                                <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm group-hover/btn:scale-110 transition-transform">
+                                                    <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                                                    </svg>
+                                                </div>
+                                                <input type="file" accept=".pdf" className="hidden" onChange={e => setNewAssignment({ ...newAssignment, file: e.target.files?.[0] || null })} />
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2.5 px-1">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">페이지 범위 (옵션)</label>
+                                            <div className="group relative">
+                                                <svg className="w-3.5 h-3.5 text-gray-300 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <div className="absolute bottom-full right-0 mb-2 w-48 p-3 bg-gray-900 text-[10px] text-white rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                                    예: 1, 3-5, 7- (1p, 3~5p, 7p부터 전원)
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="예: 1, 3-5, 7-"
+                                            className={`w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold focus:bg-white border-2 outline-none transition-all text-sm ${rangeError ? 'border-red-500/20 text-red-500' : 'border-transparent focus:border-indigo-500/10 text-gray-900'}`}
+                                            value={newAssignment.page_range}
+                                            onChange={e => setNewAssignment({ ...newAssignment, page_range: e.target.value })}
+                                        />
+                                        {rangeError && (
+                                            <p className="mt-2 ml-2 text-[11px] font-bold text-red-500 flex items-center gap-1">
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                                {rangeError}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5 block px-1">과제 설명 (선택)</label>
+                                        <textarea
+                                            placeholder="학생들에게 전달할 안내사항을 입력하세요"
+                                            rows={2}
+                                            className="w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold focus:bg-white border-2 border-transparent focus:border-indigo-500/10 outline-none transition-all text-sm resize-none"
+                                            value={newAssignment.description}
+                                            onChange={e => setNewAssignment({ ...newAssignment, description: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div className="pt-4">
+                                        <button
+                                            onClick={handleAddAssignment}
+                                            disabled={isUploading}
+                                            className="w-full py-5 bg-gray-900 text-white font-black rounded-[28px] shadow-xl shadow-gray-200 hover:bg-indigo-600 transition-all active:scale-[0.98] disabled:opacity-50 text-sm uppercase tracking-widest"
+                                        >
+                                            {isUploading ? (
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    처리 중...
+                                                </div>
+                                            ) : '과제 출제 완료'}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
