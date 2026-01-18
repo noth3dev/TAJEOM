@@ -37,7 +37,6 @@ export default function AssignmentsPage() {
 
     const [showAddModal, setShowAddModal] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
-
     // New Assignment Form
     const [newAssignment, setNewAssignment] = useState({
         title: '',
@@ -49,9 +48,7 @@ export default function AssignmentsPage() {
     });
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [rangeError, setRangeError] = useState<string | null>(null);
-
     const DAYS_TEXT = ['일', '월', '화', '수', '목', '금', '토'];
-
     // 다음 수업일 계산 헬퍼
     const getNextClassDate = (dayOfWeek: number) => {
         const now = new Date();
@@ -75,13 +72,11 @@ export default function AssignmentsPage() {
                 return;
             }
             setUserId(session.user.id);
-
             const { data: userData } = await supabase
                 .from('users')
                 .select('role')
                 .eq('id', session.user.id)
                 .single();
-
             const role = userData?.role || 'student';
             setUserRole(role);
 
@@ -90,7 +85,6 @@ export default function AssignmentsPage() {
                 .from('assignments')
                 .select('*, classes(name)')
                 .order('due_date', { ascending: true });
-
             if (role === 'student') {
                 const { data: enrolledData } = await supabase.from('class_students').select('class_id').eq('student_id', session.user.id);
                 const classIds = enrolledData?.map(e => e.class_id) || [];
@@ -112,7 +106,6 @@ export default function AssignmentsPage() {
             }
 
             const { data } = await query;
-
             if (data) {
                 const updated = await Promise.all(data.map(async (asgn) => {
                     const { count: subCount } = await supabase.from('submissions').select('*', { count: 'exact', head: true }).eq('assignment_id', asgn.id);
@@ -152,7 +145,6 @@ export default function AssignmentsPage() {
             setLoading(false);
         }
     };
-
     useEffect(() => { fetchData(); }, []);
 
     useEffect(() => {
@@ -187,7 +179,6 @@ export default function AssignmentsPage() {
             clearTimeout(timeoutId);
         };
     }, [newAssignment.file, newAssignment.page_range]);
-
     // Cleanup object URLs when previewUrl changes to avoid memory leaks
     useEffect(() => {
         const currentUrl = previewUrl;
@@ -197,7 +188,6 @@ export default function AssignmentsPage() {
             }
         };
     }, [previewUrl]);
-
     const handleFileUpload = async (file: File) => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -206,24 +196,20 @@ export default function AssignmentsPage() {
         const { error: uploadError } = await supabase.storage
             .from('assignments')
             .upload(filePath, file);
-
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
             .from('assignments')
             .getPublicUrl(filePath);
-
         return publicUrl;
     };
 
     const processPdfRange = async (file: File, range: string): Promise<File> => {
         if (!range.trim()) return file;
-
         const arrayBuffer = await file.arrayBuffer();
         const pdfDoc = await PDFDocument.load(arrayBuffer);
         const totalPages = pdfDoc.getPageCount();
         const newPdfDoc = await PDFDocument.create();
-
         // Range parsing logic (e.g., "1, 3-5, 7-")
         const parts = range.split(',').map(p => p.trim());
         const pagesToInclude: number[] = [];
@@ -233,7 +219,6 @@ export default function AssignmentsPage() {
                 const [startStr, endStr] = part.split('-');
                 const start = parseInt(startStr) || 1;
                 const end = endStr ? parseInt(endStr) : totalPages;
-
                 if (start > totalPages) {
                     throw new Error(`시작 페이지(${start})가 전체 페이지(${totalPages})보다 큽니다.`);
                 }
@@ -261,10 +246,8 @@ export default function AssignmentsPage() {
         }
 
         if (pagesToInclude.length === 0) return file;
-
         // Remove duplicates and sort
         const uniquePages = Array.from(new Set(pagesToInclude)).sort((a, b) => a - b);
-
         const copiedPages = await newPdfDoc.copyPages(pdfDoc, uniquePages);
         copiedPages.forEach(page => newPdfDoc.addPage(page));
 
@@ -306,7 +289,6 @@ export default function AssignmentsPage() {
                 created_by: userId,
                 status: 'active'
             });
-
             if (error) throw error;
 
             alert('과제가 성공적으로 출제되었습니다.');
@@ -319,7 +301,6 @@ export default function AssignmentsPage() {
             setIsUploading(false);
         }
     };
-
     const getStatusBadge = (asgn: Assignment) => {
         if (userRole === 'student' || userRole === 'parent') {
             return asgn.my_submission
@@ -352,12 +333,15 @@ export default function AssignmentsPage() {
                                     : '배정된 과제를 확인하고 PDF를 확인하세요'}
                         </p>
                     </div>
+
                     {(userRole === 'teacher' || userRole === 'admin') && (
                         <button
                             onClick={() => setShowAddModal(true)}
                             className="px-6 py-2.5 bg-gray-900 text-white rounded-2xl text-xs font-black shadow-xl hover:bg-black transition-all flex items-center gap-2 shrink-0 active:scale-95"
                         >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></s[...]
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                            </svg>
                             새 과제 내기
                         </button>
                     )}
@@ -390,7 +374,9 @@ export default function AssignmentsPage() {
 
                                         <div className="flex flex-wrap items-center gap-4">
                                             <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
-                                                <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWi[...]
+                                                <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
                                                 마감: {new Date(asgn.due_date).toLocaleDateString()}
                                             </div>
                                             {asgn.file_url && (
@@ -400,7 +386,10 @@ export default function AssignmentsPage() {
                                                     rel="noopener noreferrer"
                                                     className="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors px-3 py-1.5 bg-indigo-50 rounded-lg"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d=[...]
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 5 8.268 7.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
                                                     과제 PDF 보기
                                                 </a>
                                             )}
@@ -422,8 +411,10 @@ export default function AssignmentsPage() {
                                             </div>
                                             <p className="text-[9px] font-black text-gray-300 uppercase tracking-[0.2em]">제출 현황</p>
                                         </div>
-                                        <button className="w-12 h-12 glass-panel bg-white/50 text-gray-300 group-hover:bg-primary group-hover:text-white rounded-2xl flex items-center justify-center tr[...]
-                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l[...]
+                                        <button className="w-12 h-12 glass-panel bg-white/50 text-gray-300 group-hover:bg-primary group-hover:text-white rounded-2xl flex items-center justify-center transition-all">
+                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                                            </svg>
                                         </button>
                                     </div>
                                 </div>
@@ -435,7 +426,9 @@ export default function AssignmentsPage() {
                 ) : (
                     <div className="py-20 text-center glass-panel rounded-[40px] border-0">
                         <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-200">
-                            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v1[...]
+                            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
                         </div>
                         <p className="text-gray-400 font-bold">현재 진행 중인 과제가 없습니다.</p>
                     </div>
@@ -444,7 +437,7 @@ export default function AssignmentsPage() {
                 {/* Add Assignment Modal */}
                 {showAddModal && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-gray-900/60 backdrop-blur-md">
-                        <div className="bg-white w-full max-w-6xl h-[90vh] md:h-auto md:max-h-[85vh] rounded-[40px] md:rounded-[56px] shadow-2xl relative overflow-hidden animate-scale-in flex flex-col[...]
+                        <div className="bg-white w-full max-w-6xl h-[90vh] md:h-auto md:max-h-[85vh] rounded-[40px] md:rounded-[56px] shadow-2xl relative overflow-hidden animate-scale-in flex flex-col md:flex-row">
 
                             {/* Left Section: PDF Preview */}
                             <div className="w-full md:w-[55%] bg-gray-50 border-r border-gray-100 flex flex-col relative overflow-hidden min-h-[300px] md:min-h-0">
@@ -465,7 +458,7 @@ export default function AssignmentsPage() {
                                     <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
                                         <div className="w-24 h-24 bg-white rounded-[32px] shadow-sm flex items-center justify-center mb-6 border border-gray-50">
                                             <svg className="w-10 h-10 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 [...]
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                             </svg>
                                         </div>
                                         <h3 className="text-lg font-bold text-gray-900 mb-2">파일을 선택해주세요</h3>
@@ -494,7 +487,7 @@ export default function AssignmentsPage() {
                                         <input
                                             type="text"
                                             placeholder="과제 이름을 입력하세요"
-                                            className="w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold focus:bg-white border-2 border-transparent focus:border-indigo-500/10 outline-none transit[...]
+                                            className="w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold focus:bg-white border-2 border-transparent focus:border-indigo-500/10 outline-none transition-all"
                                             value={newAssignment.title}
                                             onChange={e => setNewAssignment({ ...newAssignment, title: e.target.value })}
                                         />
@@ -513,7 +506,7 @@ export default function AssignmentsPage() {
                                                         : 'border-gray-50 bg-gray-50/50 hover:border-gray-100'
                                                         }`}
                                                 >
-                                                    <span className={`text-[9px] font-black w-fit px-2 py-0.5 rounded-full ${newAssignment.class_id === c.id ? 'bg-indigo-500 text-white' : 'bg-gray-200[...]
+                                                    <span className={`text-[9px] font-black w-fit px-2 py-0.5 rounded-full ${newAssignment.class_id === c.id ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
                                                         {DAYS_TEXT[c.day_of_week]} {c.start_time?.slice(0, 5) || '--:--'}
                                                     </span>
                                                     <span className={`text-[11px] font-bold truncate ${newAssignment.class_id === c.id ? 'text-indigo-600' : 'text-gray-500'}`}>
@@ -529,14 +522,14 @@ export default function AssignmentsPage() {
                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5 block px-1">마감 기한</label>
                                             <input
                                                 type="date"
-                                                className="w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold focus:bg-white border-2 border-transparent focus:border-indigo-500/10 outline-none tra[...]
+                                                className="w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold focus:bg-white border-2 border-transparent focus:border-indigo-500/10 outline-none transition-all"
                                                 value={newAssignment.due_date}
                                                 onChange={e => setNewAssignment({ ...newAssignment, due_date: e.target.value })}
                                             />
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5 block px-1">과제 PDF 파일</label>
-                                            <label className="w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold flex items-center justify-between cursor-pointer hover:bg-gray-100 transition-all g[...]
+                                            <label className="w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold flex items-center justify-between cursor-pointer hover:bg-gray-100 transition-all group/btn">
                                                 <span className="text-xs text-gray-400 truncate max-w-[120px]">{newAssignment.file ? newAssignment.file.name : 'PDF 선택'}</span>
                                                 <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm group-hover/btn:scale-110 transition-transform">
                                                     <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -555,7 +548,7 @@ export default function AssignmentsPage() {
                                                 <svg className="w-3.5 h-3.5 text-gray-300 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                 </svg>
-                                                <div className="absolute bottom-full right-0 mb-2 w-48 p-3 bg-gray-900 text-[10px] text-white rounded-xl opacity-0 group-hover:opacity-100 transition-op[...]
+                                                <div className="absolute bottom-full right-0 mb-2 w-48 p-3 bg-gray-900 text-[10px] text-white rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                                                     예: 1, 3-5, 7- (1p, 3~5p, 7p부터 전원)
                                                 </div>
                                             </div>
@@ -563,14 +556,14 @@ export default function AssignmentsPage() {
                                         <input
                                             type="text"
                                             placeholder="예: 1, 3-5, 7-"
-                                            className={`w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold focus:bg-white border-2 outline-none transition-all text-sm ${rangeError ? 'border-red-50[...]
+                                            className={`w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold focus:bg-white border-2 outline-none transition-all text-sm ${rangeError ? 'border-red-500 text-red-500' : 'border-transparent focus:border-indigo-500/10'}`}
                                             value={newAssignment.page_range}
                                             onChange={e => setNewAssignment({ ...newAssignment, page_range: e.target.value })}
                                         />
                                         {rangeError && (
                                             <p className="mt-2 ml-2 text-[11px] font-bold text-red-500 flex items-center gap-1">
                                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.3[...]
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                                 </svg>
                                                 {rangeError}
                                             </p>
@@ -582,7 +575,7 @@ export default function AssignmentsPage() {
                                         <textarea
                                             placeholder="학생들에게 전달할 안내사항을 입력하세요"
                                             rows={2}
-                                            className="w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold focus:bg-white border-2 border-transparent focus:border-indigo-500/10 outline-none transit[...]
+                                            className="w-full px-6 py-4.5 bg-gray-50 rounded-[24px] font-bold focus:bg-white border-2 border-transparent focus:border-indigo-500/10 outline-none transition-all"
                                             value={newAssignment.description}
                                             onChange={e => setNewAssignment({ ...newAssignment, description: e.target.value })}
                                         />
@@ -592,7 +585,7 @@ export default function AssignmentsPage() {
                                         <button
                                             onClick={handleAddAssignment}
                                             disabled={isUploading}
-                                            className="w-full py-5 bg-gray-900 text-white font-black rounded-[28px] shadow-xl shadow-gray-200 hover:bg-indigo-600 transition-all active:scale-[0.98] dis[...]
+                                            className="w-full py-5 bg-gray-900 text-white font-black rounded-[28px] shadow-xl shadow-gray-200 hover:bg-indigo-600 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                                         >
                                             {isUploading ? (
                                                 <div className="flex items-center justify-center gap-2">
@@ -620,4 +613,4 @@ export default function AssignmentsPage() {
             `}</style>
         </DashboardLayout>
     );
-                                                }
+}
